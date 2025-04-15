@@ -1,0 +1,50 @@
+---
+# http-server-ansible.yml - A simple playbook to deploy a basic HTTP server
+
+- name: HTTP Server Test Playbook
+  hosts: localhost
+  become: yes
+  
+  tasks:
+    - name: Install nginx
+      package:
+        name: nginx
+        state: present
+    - name: Ensure /var/www/html exists
+      file:
+        path: /var/www/html
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+      
+    - name: Create custom index page
+      copy:
+        content: "Alive"
+        dest: /var/www/html/index.html
+        mode: '0644'
+        
+    - name: Ensure nginx is running and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Allow HTTP through UFW if enabled
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+      register: ufw_result
+      failed_when: ufw_result is failed and 'Could not find a suitable python' not in ufw_result.msg
+
+    - name: Create a timestamp file
+      copy:
+        content: "Ansible pull executed successfully at {{ ansible_date_time.iso8601 }}"
+        dest: /var/www/html/timestamp.txt
+        mode: '0644'
+        
+    - name: Output deployment information
+      debug:
+        msg: "HTTP server deployed on {{ ansible_hostname }} ({{ ansible_distribution }} {{ ansible_distribution_version }})"
